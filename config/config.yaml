@@ -1,0 +1,2 @@
+sensors: !include sensors.yaml
+relays: !include relays.yaml

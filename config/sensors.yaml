@@ -1,0 +1,8 @@
+- name: Depth
+  units: meters
+- name: Temperature
+  units: degrees
+- name: Voltage
+  units: volts
+- name: Current
+  units: ampere
