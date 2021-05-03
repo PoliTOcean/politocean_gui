@@ -1,0 +1,6 @@
+paho-mqtt
+PyYAML
+pyyaml-include
+PyQt5
+pyqtgraph
+PyGObject
