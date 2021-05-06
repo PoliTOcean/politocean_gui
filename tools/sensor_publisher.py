@@ -15,8 +15,9 @@ def on_publish(client, userdata, result):
 def random_sensors():
     data = {}
     data['temperature'] = random()*100
-    data['pressure'] = random()*100
+    data['depth'] = random()*100
     data['voltage'] = random()*10
+    data['current'] = random()*10
 
     return data
 
