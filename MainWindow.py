@@ -11,12 +11,17 @@ from QLedIndicator import QLedIndicator
 
 import custom_types as t
 
+from mqtt import MQTTWorker
+
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        self.mqttWorker = MQTTWorker()
+        self.mqttWorker.start()
 
         # Status Lights
         statusGrid = self.ui.groupBoxStatus.layout()
@@ -41,6 +46,8 @@ class MainWindow(QMainWindow):
             vLayout = QVBoxLayout(self.ui.groupBoxSensorReadouts)
             i = 0
             for sensor in self.rov.sensors:
+                self.mqttWorker.add_sensor(sensor)
+
                 hLayout = QHBoxLayout(self)
                 hLayout.addWidget(sensor.labelName)
                 hLayout.addWidget(sensor.lcd)
@@ -108,3 +115,8 @@ class MainWindow(QMainWindow):
         p.setMouseEnabled(x=False, y=False)
         p.plot(y=3+np.random.normal(size=50),
                brush=graphColor, fillLevel=0)
+
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.mqttWorker.stop()
+        self.mqttWorker.terminate()
+        self.mqttWorker.wait()
