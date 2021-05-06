@@ -2,7 +2,7 @@ from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QVBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QTimer, Qt
 from Ui_MainWindow import Ui_MainWindow
 
 from QRov import QRov
@@ -12,6 +12,7 @@ from QLedIndicator import QLedIndicator
 import custom_types as t
 
 from mqtt import MQTTWorker
+from time import strftime
 
 
 class MainWindow(QMainWindow):
@@ -19,6 +20,11 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(20)
+        self.timer.timeout.connect(self.update_time)
+        self.timer.start()
 
         self.mqttWorker = MQTTWorker()
         self.mqttWorker.start()
@@ -115,6 +121,9 @@ class MainWindow(QMainWindow):
         p.setMouseEnabled(x=False, y=False)
         p.plot(y=3+np.random.normal(size=50),
                brush=graphColor, fillLevel=0)
+
+    def update_time(self):
+        self.ui.labCurrentTime.setText(strftime("%H"+":"+"%M"+":"+"%S"))
 
     def closeEvent(self, a0: QCloseEvent) -> None:
         self.mqttWorker.stop()
