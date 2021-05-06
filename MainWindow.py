@@ -1,21 +1,20 @@
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
-from QRov import QRov
-from QLedIndicator import QLedIndicator
-from pyqtgraph import PlotWidget
-import custom_types as t
-
-from PyQt5.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLCDNumber, QLabel, QMainWindow, QPushButton, QSizePolicy, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QVBoxLayout
 from PyQt5.QtCore import Qt
 from Ui_MainWindow import Ui_MainWindow
 
+from QRov import QRov
 from QActivityMonitor import QActivityMonitor
+from QLedIndicator import QLedIndicator
+
+import custom_types as t
 
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
-        super(MainWindow, self).__init__(parent)
+        QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
@@ -42,59 +41,15 @@ class MainWindow(QMainWindow):
             vLayout = QVBoxLayout(self.ui.groupBoxSensorReadouts)
             i = 0
             for sensor in self.rov.sensors:
-                labelName = QLabel(self)
-                labelName.setText(sensor.name+":")
-                labelName.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                lcd = QLCDNumber(self)
-                lcd.display(sensor.value)
-                lcd.setSegmentStyle(QLCDNumber.SegmentStyle.Flat)
-                labelUnits = QLabel(self)
-                labelUnits.setText(sensor.units)
-                labelUnits.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
                 hLayout = QHBoxLayout(self)
-                hLayout.addWidget(labelName)
-                hLayout.addWidget(lcd)
-                hLayout.addWidget(labelUnits)
+                hLayout.addWidget(sensor.labelName)
+                hLayout.addWidget(sensor.lcd)
+                hLayout.addWidget(sensor.labelUnits)
                 hLayout.setAlignment(hLayout, Qt.AlignHCenter)
 
                 vLayout.addLayout(hLayout)
 
-                # Setup plots
-                graphColor = self.palette().highlight().color()
-                graphColor.setAlpha(90)
-
-                p = self.ui.graphWidget.addPlot(0, i)
-
-                leftAxis = p.getAxis('left')
-                leftAxis.setLabel(units=sensor.units)
-                leftAxis.setPen(self.palette().windowText().color())
-                leftAxis.setTextPen(self.palette().windowText().color())
-
-                topAxis = p.getAxis('top')
-                topAxis.setPen(self.palette().windowText().color())
-                topAxis.setTextPen(self.palette().windowText().color())
-                topAxis.setStyle(showValues=False)
-
-                rightAxis = p.getAxis('right')
-                rightAxis.setPen(self.palette().windowText().color())
-                rightAxis.setTextPen(self.palette().windowText().color())
-                rightAxis.setStyle(showValues=False)
-
-                bottomAxis = p.getAxis('bottom')
-                bottomAxis.setPen(self.palette().windowText().color())
-                bottomAxis.setTextPen(self.palette().windowText().color())
-                bottomAxis.setStyle(showValues=False)
-
-                titleColor = self.palette().windowText().color()
-                p.setTitle(sensor.name, color=titleColor,
-                           size='12pt', bold=True)
-                p.showAxis('top', True)
-                p.showAxis('right', True)
-                p.showGrid(x=True, y=True, alpha=0.2)
-                p.setMouseEnabled(x=False, y=False)
-                p.plot(y=3+np.random.normal(size=50),
-                       brush=graphColor, fillLevel=0)
+                self.setup_plots(sensor.name, sensor.units, i)
 
                 i += 1
 
@@ -102,10 +57,7 @@ class MainWindow(QMainWindow):
 
         if len(self.rov.relays) > 0:
             for relay in self.rov.relays:
-                pb = QPushButton(self)
-                pb.setText(relay.name)
-                pb.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-                self.ui.groupBoxRelayButtons.layout().addWidget(pb)
+                self.ui.groupBoxRelayButtons.layout().addWidget(relay.button)
 
         self.activityMonitor = QActivityMonitor(self.ui.teLog)
         self.activityMonitor.display("GUI started...", t.Message.INFO)
@@ -120,3 +72,39 @@ class MainWindow(QMainWindow):
     def on_buttonCopyLogToClipboard_clicked(self):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.ui.teLog.toPlainText())
+
+    def setup_plots(self, title, units, position):
+        graphColor = self.palette().highlight().color()
+        graphColor.setAlpha(90)
+
+        p = self.ui.graphWidget.addPlot(0, position)
+
+        leftAxis = p.getAxis('left')
+        leftAxis.setLabel(units=units)
+        leftAxis.setPen(self.palette().windowText().color())
+        leftAxis.setTextPen(self.palette().windowText().color())
+
+        topAxis = p.getAxis('top')
+        topAxis.setPen(self.palette().windowText().color())
+        topAxis.setTextPen(self.palette().windowText().color())
+        topAxis.setStyle(showValues=False)
+
+        rightAxis = p.getAxis('right')
+        rightAxis.setPen(self.palette().windowText().color())
+        rightAxis.setTextPen(self.palette().windowText().color())
+        rightAxis.setStyle(showValues=False)
+
+        bottomAxis = p.getAxis('bottom')
+        bottomAxis.setPen(self.palette().windowText().color())
+        bottomAxis.setTextPen(self.palette().windowText().color())
+        bottomAxis.setStyle(showValues=False)
+
+        titleColor = self.palette().windowText().color()
+        p.setTitle(title, color=titleColor,
+                   size='12pt', bold=True)
+        p.showAxis('top', True)
+        p.showAxis('right', True)
+        p.showGrid(x=True, y=True, alpha=0.2)
+        p.setMouseEnabled(x=False, y=False)
+        p.plot(y=3+np.random.normal(size=50),
+               brush=graphColor, fillLevel=0)
