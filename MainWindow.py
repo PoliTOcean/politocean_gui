@@ -1,3 +1,4 @@
+from QCompass import QCompass
 from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
@@ -8,6 +9,7 @@ from Ui_MainWindow import Ui_MainWindow
 from QRov import QRov
 from QActivityMonitor import QActivityMonitor
 from QLedIndicator import QLedIndicator
+from QDepthTape import QDepthTape
 
 import custom_types as t
 
@@ -79,6 +81,15 @@ class MainWindow(QMainWindow):
         self.ui.graphWidget.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.ui.graphWidget.ci.layout.setSpacing(20)
 
+        self.depthTape = QDepthTape()
+        self.ui.gridLayoutHUD.addWidget(self.depthTape.container, 1, 0, 4, 1)
+
+        self.compass = QCompass()
+        self.ui.gridLayoutHUD.addWidget(self.compass.container, 0, 0, 1, 4)
+
+        width = QApplication.primaryScreen().size().width()
+        self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
+
     def on_buttonClearLog_clicked(self):
         self.ui.teLog.clear()
 
@@ -90,7 +101,7 @@ class MainWindow(QMainWindow):
         graphColor = self.palette().highlight().color()
         graphColor.setAlpha(90)
 
-        p = self.ui.graphWidget.addPlot(0, position)
+        p = self.ui.graphWidget.addPlot(0, position, 1, 1)
 
         leftAxis = p.getAxis('left')
         leftAxis.setLabel(units=units)

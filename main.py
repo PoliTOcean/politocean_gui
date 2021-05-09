@@ -1,10 +1,12 @@
 import sys
 
 from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtQml import qmlRegisterType
 from PyQt5.QtWidgets import QApplication, QStyleFactory, QWidget
 from PyQt5.QtCore import Qt
 from MainWindow import MainWindow
 
+import custom_types
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
