@@ -1,9 +1,10 @@
+from QJoystick.joystick import QJoystick
 from QCompass import QCompass
 from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QVBoxLayout
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QThread, QTimer, Qt
 from Ui_MainWindow import Ui_MainWindow
 
 from QRov import QRov
@@ -34,18 +35,19 @@ class MainWindow(QMainWindow):
         # Status Lights
         statusGrid = self.ui.groupBoxStatus.layout()
 
-        statusLightCom = QLedIndicator("COM")
-        # statusLightCom.setIndicatorTitle("COM")
-        statusLightRpi = QLedIndicator("RPi")
-        # statusLightRpi.setIndicatorTitle("RPi")
-        statusLightJoystick = QLedIndicator("Joystick")
-        # statusLightJoystick.setIndicatorTitle("RPi")
-        statusLightLights = QLedIndicator("Lights")
+        self.statusLightCom = QLedIndicator()
+        self.statusLightCom.setTitle("COM")
+        self.statusLightRpi = QLedIndicator()
+        self.statusLightRpi.setTitle("RPi")
+        self.statusLightJoystick = QLedIndicator()
+        self.statusLightJoystick.setTitle("Joystick")
+        self.statusLightLights = QLedIndicator()
+        self.statusLightLights.setTitle("Lights")
 
-        statusGrid.addWidget(statusLightCom, 0, 0, 1, 1)
-        statusGrid.addWidget(statusLightRpi, 0, 1, 1, 1)
-        statusGrid.addWidget(statusLightJoystick, 1, 0, 1, 1)
-        statusGrid.addWidget(statusLightLights, 1, 1, 1, 1)
+        statusGrid.addWidget(self.statusLightCom.container, 0, 0, 1, 1)
+        statusGrid.addWidget(self.statusLightRpi.container, 0, 1, 1, 1)
+        statusGrid.addWidget(self.statusLightJoystick.container, 1, 0, 1, 1)
+        statusGrid.addWidget(self.statusLightLights.container, 1, 1, 1, 1)
 
         # Sensor Readouts
         self.rov = QRov()
@@ -89,6 +91,17 @@ class MainWindow(QMainWindow):
 
         width = QApplication.primaryScreen().size().width()
         self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
+
+        self.__initJoystick()
+
+    def __initJoystick(self):
+        self.joystickThread = QThread()
+        self.joystick = QJoystick()
+        self.joystick.moveToThread(self.joystickThread)
+        self.joystick.connected.connect(
+            self.statusLightJoystick.setStatus)
+        self.joystickThread.started.connect(self.joystick.loop_forever)
+        self.joystickThread.start()
 
     def on_buttonClearLog_clicked(self):
         self.ui.teLog.clear()
