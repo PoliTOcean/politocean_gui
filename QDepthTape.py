@@ -67,7 +67,6 @@ class QDepthTape(QWidget):
 
     @pyqtSlot(float)
     def updateDepth(self, depth: float):
-        print(depth)
         self.currentReadingItem.text = str(depth)
         change = depth * -40.0
         for tickItem in self.tickList:
