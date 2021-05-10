@@ -1,50 +1,44 @@
-from PyQt5.QtCore import Q_ENUMS, Qt
-from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QSizePolicy, QVBoxLayout, QFrame, QWidget
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtQuick import QQuickView
 
 
-class ComponentStatus:
-    ON = 0
-    OFF = 1
+class QLedIndicator(QWidget):
+    def __init__(self, parent=None) -> None:
+        QWidget.__init__(self, parent)
 
+        self.viewer = QQuickView()
+        self.viewer.setSource(QUrl("resources/LedIndicator.qml"))
+        # self.viewer.rootContext().setContextProperty("LedIndicator", this)
+        self.viewer.setResizeMode(QQuickView.SizeRootObjectToView)
 
-class QLedIndicator(QFrame):
-    Q_ENUMS(ComponentStatus)
+        self.container = QWidget.createWindowContainer(self.viewer)
+        self.container.setFocusPolicy(Qt.TabFocus)
 
-    def __init__(self, title, parent=None):
-        QFrame.__init__(self, parent)
+        self.refreshPalette()
 
-        self.status = ComponentStatus.OFF
+    def setTitle(self, title: str):
+        self.viewer.rootObject().setProperty("indicatorTitle", title)
 
-        self.titleLabel = QLabel(title)
-        self.titleLabel.setAlignment(Qt.AlignCenter)
+    def getIndicatorTitle(self):
+        return self.viewer.rootObject().property("indicatorTitle")
 
-        self.statusLabel = QLabel(
-            "On" if self.status == ComponentStatus.ON else "Off")
-        self.statusLabel.setAlignment(Qt.AlignCenter)
+    def setStatus(self, on: bool):
+        self.viewer.rootObject().setProperty("isStatusOn", on)
 
-        self.vLayout = QVBoxLayout(self)
-        self.vLayout.addWidget(self.titleLabel)
-        self.vLayout.addWidget(self.statusLabel)
-        self.vLayout.setAlignment(
-            self.vLayout, Qt.AlignHCenter | Qt.AlignVCenter)
+    def getStatus(self):
+        return self.viewer.rootObject().property("isStatusOn")
 
-        self.setLayout(self.vLayout)
+    def refreshPalette(self):
+        p = self.palette()
 
-        self.opacityEffect = QGraphicsOpacityEffect(self)
+        self.viewer.setColor(p.window().color())
+        self.viewer.rootObject().setProperty("textColor", p.text().color())
+        self.viewer.rootObject().setProperty("borderColor", p.text().color())
 
-        self.setObjectName("LedIndicatorFrame")
-        self.setFrameStyle(QFrame.Box | QFrame.Panel)
-        self.setStyleSheet(
-            '#LedIndicatorFrame { border: 3px solid #FFFFFF; background-color: #304E6E; }')
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.deactivate()
+        backgroundColor = p.highlight().color()
+        backgroundColor.setAlpha(90)
+        self.viewer.rootObject().setProperty("backgroundColor", backgroundColor)
 
-    def activate(self):
-        self.status = ComponentStatus.ON
-        self.opacityEffect.setOpacity(0.3)
-        self.setGraphicsEffect(self.opacityEffect)
-
-    def deactivate(self):
-        self.status = ComponentStatus.OFF
-        self.opacityEffect.setOpacity(0.3)
-        self.setGraphicsEffect(self.opacityEffect)
+        titleColor = p.highlight().color()
+        self.viewer.rootObject().setProperty("titleColor", titleColor)
