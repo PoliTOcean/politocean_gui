@@ -3,3 +3,4 @@ PyYAML
 pyyaml-include
 PyQt5
 pyqtgraph
+PySDL2
