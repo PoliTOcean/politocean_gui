@@ -1,56 +1,53 @@
-########################################################################
-#
-# Copyright (c) 2021, STEREOLABS.
-#
-# All rights reserved.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-########################################################################
-
-"""
-    Open the camera and start streaming images using H264 codec
-"""
+import cv2
+import socket
+import math
+import pickle
 import sys
-import pyzed.sl as sl
 
-def main():
+max_length = 65000
+host = sys.argv[1] # set ip of the receiver
+port = 5000
 
-    init = sl.InitParameters()
-    init.camera_resolution = sl.RESOLUTION.HD720
-    init.depth_mode = sl.DEPTH_MODE.NONE
-    cam = sl.Camera()
-    status = cam.open(init)
-    if status != sl.ERROR_CODE.SUCCESS:
-        print(repr(status))
-        exit(1)
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    runtime = sl.RuntimeParameters()
+cap = cv2.VideoCapture(0)
+ret, frame = cap.read()
 
-    stream = sl.StreamingParameters()
-    stream.codec = sl.STREAMING_CODEC.H264
-    stream.bitrate = 4000
-    status = cam.enable_streaming(stream)
-    if status != sl.ERROR_CODE.SUCCESS:
-        print(repr(status))
-        exit(1)
+while ret:
+    # compress frame
+    retval, buffer = cv2.imencode(".jpg", frame)
 
-    print("  Quit : CTRL+C\n")
-    while True:
-        err = cam.grab(runtime)
+    if retval:
+        # convert to byte array
+        buffer = buffer.tobytes()
+        # get size of the frame
+        buffer_size = len(buffer)
 
-    cam.disable_streaming()
-    cam.close()
+        num_of_packs = 1
+        if buffer_size > max_length:
+            num_of_packs = math.ceil(buffer_size/max_length)
 
-if __name__ == "__main__":
-    main()
+        frame_info = {"packs":num_of_packs}
+
+        # send the number of packs to be expected
+        print("Number of packs:", num_of_packs)
+        sock.sendto(pickle.dumps(frame_info), (host, port))
+        
+        left = 0
+        right = max_length
+
+        for i in range(num_of_packs):
+            print("left:", left)
+            print("right:", right)
+
+            # truncate data to send
+            data = buffer[left:right]
+            left = right
+            right += max_length
+
+            # send the frames accordingly
+            sock.sendto(data, (host, port))
+    
+    ret, frame = cap.read()
+
+print("done")

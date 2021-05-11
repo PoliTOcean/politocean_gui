@@ -1,66 +1,47 @@
-########################################################################
-#
-# Copyright (c) 2021, STEREOLABS.
-#
-# All rights reserved.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-########################################################################
-
-"""
-    Read a stream and display the left images using OpenCV
-"""
-import sys
-import pyzed.sl as sl
 import cv2
+import socket
+import pickle
+import numpy as np
 
+host = "0.0.0.0"
+port = 5000
+max_length = 65540
 
-def main():
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind((host, port))
 
-    init = sl.InitParameters()
-    init.camera_resolution = sl.RESOLUTION.HD720
-    init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
+frame_info = None
+buffer = None
+frame = None
 
-    # USE LOCAL PARAMETER INSTEAD
-    if (len(sys.argv) > 1) :
-        ip = sys.argv[1]
-        init.set_from_stream(ip)
-    else :
-        print('Usage : python3 streaming_receiver.py ip')
-        exit(1)
+print("-> waiting for connection")
 
-    cam = sl.Camera()
-    status = cam.open(init)
-    if status != sl.ERROR_CODE.SUCCESS:
-        print(repr(status))
-        exit(1)
+while True:
+    data, address = sock.recvfrom(max_length)
+    
+    if len(data) < 100:
+        frame_info = pickle.loads(data)
 
-    runtime = sl.RuntimeParameters()
-    mat = sl.Mat()
+        if frame_info:
+            nums_of_packs = frame_info["packs"]
 
-    key = ''
-    print("  Quit : CTRL+C\n")
-    while key != 113:
-        err = cam.grab(runtime)
-        if (err == sl.ERROR_CODE.SUCCESS) :
-            cam.retrieve_image(mat, sl.VIEW.LEFT)
-            cv2.imshow("ZED", mat.get_data())
-            key = cv2.waitKey(1)
-        else :
-            key = cv2.waitKey(1)
+            for i in range(nums_of_packs):
+                data, address = sock.recvfrom(max_length)
 
-    cam.close()
+                if i == 0:
+                    buffer = data
+                else:
+                    buffer += data
 
-if __name__ == "__main__":
-    main()
+            frame = np.frombuffer(buffer, dtype=np.uint8)
+            frame = frame.reshape(frame.shape[0], 1)
+
+            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+            frame = cv2.flip(frame, 1)
+            
+            if frame is not None and type(frame) == np.ndarray:
+                cv2.imshow("Stream", frame)
+                if cv2.waitKey(1) == 27:
+                    break
+                
+print("goodbye")
