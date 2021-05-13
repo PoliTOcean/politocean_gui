@@ -16,6 +16,9 @@ class QDiveTimer(QObject):
         """Start the dive timer.
         """
 
+        if not self.__paused and self.__started:
+            return
+
         self.__paused = False
         self.__started = True
 
@@ -24,6 +27,9 @@ class QDiveTimer(QObject):
     def pause(self) -> None:
         """Pause the dive timer.
         """
+
+        if self.__paused:
+            return
 
         self.__paused = True
 
