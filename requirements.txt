@@ -3,3 +3,5 @@ PyYAML
 pyyaml-include
 PyQt5
 pyqtgraph
+pytest
+pytest-qt
