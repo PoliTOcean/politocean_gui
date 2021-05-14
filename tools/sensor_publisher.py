@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 import json
 
-from random import random
+import random
 
 
 def on_connect(client, userdata, flags, rc):
@@ -14,10 +14,10 @@ def on_publish(client, userdata, result):
 
 def random_sensors():
     data = {}
-    data['temperature'] = random()*100
-    data['depth'] = random()*100
-    data['voltage'] = random()*10
-    data['current'] = random()*10
+    data['temperature'] = round(random.uniform(40,60),2)
+    data['depth'] = round(random.uniform(0,10),2)
+    data['voltage'] = random.random()*10
+    data['current'] = random.random()*10
 
     return data
 
