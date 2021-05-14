@@ -4,3 +4,4 @@ pyyaml-include
 PyQt5
 pyqtgraph
 PySDL2
+opencv-python
