@@ -1,6 +1,6 @@
 from .QSensor import QSensor
 from .QRelay import QRelay
-from .QJoystick import QJoystick
+from .QJoystick import QJoystick, QJoystickAxis, QJoystickButton
 
 import yaml
 from yamlinclude import YamlIncludeConstructor
