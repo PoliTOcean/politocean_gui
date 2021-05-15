@@ -1,15 +1,16 @@
-from QCompass import QCompass
 from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QVBoxLayout
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, pyqtSlot
 from Ui_MainWindow import Ui_MainWindow
 
 from QRov import QRov
+from QRov.QJoystick import QJoystick, QJoystickAxis, QJoystickButton
 from QActivityMonitor import QActivityMonitor
 from QLedIndicator import QLedIndicator
 from QDepthTape import QDepthTape
+from QCompass import QCompass
 
 import custom_types as t
 
@@ -92,16 +93,8 @@ class MainWindow(QMainWindow):
         width = QApplication.primaryScreen().size().width()
         self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
 
-    #     self.__initJoystick()
-
-    # def __initJoystick(self):
-    #     self.joystickThread = QThread()
-    #     self.joystick = QJoystick()
-    #     self.joystick.moveToThread(self.joystickThread)
-    #     self.joystick.connected.connect(
-    #         self.statusLightJoystick.setStatus)
-    #     self.joystickThread.started.connect(self.joystick.loop_forever)
-    #     self.joystickThread.start()
+        self.joystick = QJoystick()
+        self.joystick.signals.connected.connect(self.statusLightJoystick.setStatus)
 
     def on_buttonClearLog_clicked(self):
         self.ui.teLog.clear()
