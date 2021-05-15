@@ -82,7 +82,8 @@ class MainWindow(QMainWindow):
         self.ui.graphWidget.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.ui.graphWidget.ci.layout.setSpacing(20)
 
-        self.depthTape = QDepthTape()
+        self.depthTape = QDepthTape(maxDepth=10)
+        self.mqttWorker.signals.depth.connect(self.depthTape.updateDepth)
         self.ui.gridLayoutHUD.addWidget(self.depthTape.container, 1, 0, 4, 1)
 
         self.compass = QCompass()
