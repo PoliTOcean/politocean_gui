@@ -13,7 +13,6 @@ class QJoystick(QObject):
         QObject.__init__(self, parent)
 
         self.signals = QJoystickSignals()
-        self.signals.connected.connect(self.connect)
 
         self.__timer = QTimer()
         self.__timer.timeout.connect(self.__update)

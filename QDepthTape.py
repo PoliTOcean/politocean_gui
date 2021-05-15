@@ -54,19 +54,19 @@ class QDepthTape(QWidget):
 
     def onResize(self):
         self.__updateCurrentReadingPosition()
-        self.__updateTicksPosition()
+        self.__updateTicksPosition(self.lastDepth)
 
     @pyqtSlot(float)
     def updateDepth(self, depth: float):
         self.currentReadingItem.text = str(depth)
-        self.__updateTicksPosition()
+        self.__updateTicksPosition(depth)
 
         self.lastDepth = depth
 
-    def __updateTicksPosition(self):
+    def __updateTicksPosition(self, depth: float):
         for i, tickItem in enumerate(self.tickList, start=0):
             tickItem.setX(15 - tickItem.property("textX"))
-            tickItem.setY((i - self.lastDepth) * 40 + self.viewer.height() /
+            tickItem.setY((i - depth) * 40 + self.viewer.height() /
                           2 - tickItem.height()/2)
 
     def __updateCurrentReadingPosition(self):
