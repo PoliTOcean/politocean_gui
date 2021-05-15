@@ -1,62 +1,55 @@
 import sdl2
 import sdl2.ext
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 
 from .mappings import XboxOneMapping
+from .element import QJoystickAxis, QJoystickButton
+from .signals import QJoystickSignals
 
 
 class QJoystick(QObject):
-    connected = pyqtSignal(bool)
-    axisChanged = pyqtSignal()
-    buttonChanged = pyqtSignal()
-    finished = pyqtSignal()
-
     def __init__(self, parent=None) -> None:
         QObject.__init__(self, parent)
 
-        self.__axes = []
-        self.__buttons = []
+        self.signals = QJoystickSignals()
+        self.signals.connected.connect(self.connect)
 
-        self.connect()
-
-    def connect(self) -> bool:
-        self.__joystick = sdl2.SDL_JoystickOpen(0)
-
-        if self.__joystick:
-            return True
-
-        return False
+        self.__timer = QTimer()
+        self.__timer.timeout.connect(self.__update)
+        self.__timer.start(16)
 
     @property
     def name(self):
         return sdl2.SDL_JoystickName(self.__joystick).decode('utf8')
 
-    def is_connected(self):
+    @property
+    def connected(self):
         if self.__joystick:
             return True
 
         return False
 
-    def update(self):
+    def __open(self):
+        self.__joystick = sdl2.SDL_JoystickOpen(0)
+    
+    def __close(self):
+        sdl2.SDL_JoystickClose(self.__joystick)
+
+    def __update(self):
         for event in sdl2.ext.get_events():
             if event.type == sdl2.SDL_JOYAXISMOTION:
-                self.__axes[event.jaxis.axis] = event.jaxis.value
-                self.axisChanged.emit()
+                self.signals.axisChanged.emit(QJoystickAxis(event.jaxis.axis, event.jaxis.value))
             elif event.type == sdl2.SDL_JOYBUTTONDOWN:
-                self.__buttons[event.jbutton.button] = event.jbutton.state
-                self.buttonChanged.emit()
+                self.signals.buttonChanged.emit(QJoystickButton(event.jbutton.button, event.jbutton.state))
             elif event.type == sdl2.SDL_JOYBUTTONUP:
-                self.__buttons[event.jbutton.button] = event.jbutton.state
-                self.buttonChanged.emit()
+                self.signals.buttonChanged.emit(QJoystickButton(event.jbutton.button, event.jbutton.state))
             elif event.type == sdl2.SDL_JOYDEVICEADDED:
-                self.connected.emit(True)
+                self.signals.connected.emit(True)
+                self.__open()
             elif event.type == sdl2.SDL_JOYDEVICEREMOVED:
-                self.connected.emit(False)
-
-    def loop_forever(self):
-        while True:
-            self.update()
+                self.__close()
+                self.signals.connected.emit(False)
 
     def get_button(self, button: int):
         return self.__buttons[button]
