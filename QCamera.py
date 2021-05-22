@@ -16,6 +16,7 @@ class QCamera(QObject):
     MAX_IMAGE_DGRAM = MAX_DGRAM - 64
 
     imageReady = pyqtSignal(QImage)
+    connected = pyqtSignal(bool)
 
     def __init__(self, address: str = "127.0.0.1", port: int = None, fps: int = None, parent=None) -> None:
         QObject.__init__(self, parent)
@@ -26,6 +27,8 @@ class QCamera(QObject):
         self.__fps = fps
 
         self.__streaming = False
+        self.__cleaned = False
+
         self.__timer = QTimer()
         self.__timer.timeout.connect(self.__readImage)
 
@@ -82,36 +85,43 @@ class QCamera(QObject):
         if self.__streaming:
             return
 
-        self.__clear()
+        self.__socket.settimeout(5 / self.__fps)
         self.__timer.start(1000 // self.__fps)
         self.__streaming = True
 
     def __readImage(self) -> None:
         data = b''
         i = 2
-        while i > 1:
-            i, seg = self.__read()
-            data += seg
+        try:
+            if not self.__cleaned:
+                self.__clean()
 
-        frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), 1)
-        image = QImage(
-            frame.data, frame.shape[1], frame.shape[0], QImage.Format_RGB888).rgbSwapped()
+            while i > 1:
+                i, seg = self.__read()
+                data += seg
 
-        self.imageReady.emit(image)
+            frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), 1)
+            image = QImage(
+                frame.data, frame.shape[1], frame.shape[0], QImage.Format_RGB888).rgbSwapped()
+
+            self.imageReady.emit(image)
+
+            self.connected.emit(True)
+        except socket.timeout:
+            self.connected.emit(False)
 
     def __read(self) -> Tuple[int, bytes]:
         seg, _ = self.__socket.recvfrom(self.MAX_DGRAM)
 
         return struct.unpack("B", seg[0:1])[0], seg[1:]
 
-    def __clear(self) -> None:
-        while True:
-            seg, _ = self.__socket.recvfrom(self.MAX_DGRAM)
+    def __clean(self) -> None:
+        i = 2
+        while i > 1:
+            i, seg = self.__read()
 
-            print(seg[0])
-            if struct.unpack("B", seg[0:1])[0] == 1:
-                print("finish emptying buffer")
-                return
+        print("finish emptying buffer")
+        self.__cleaned = True
 
 
 class QCameraView(QLabel):
@@ -151,4 +161,4 @@ class QCameraView(QLabel):
     @pyqtSlot(QImage)
     def setImage(self, img):
         self.setPixmap(QPixmap.fromImage(img).scaled(
-            self.width(), self.height(), Qt.KeepAspectRatio))
+            self.width(), self.height()))

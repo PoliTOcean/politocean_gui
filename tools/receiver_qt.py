@@ -16,6 +16,7 @@ class QCam(QObject):
     MAX_IMAGE_DGRAM = MAX_DGRAM - 64
 
     imageReady = pyqtSignal(QImage)
+    connected = pyqtSignal(bool)
 
     def __init__(self, address: str = "127.0.0.1", port: int = None, fps: int = None, parent=None) -> None:
         QObject.__init__(self, parent)
@@ -26,6 +27,8 @@ class QCam(QObject):
         self.__fps = fps
 
         self.__streaming = False
+        self.__connected = True
+
         self.__timer = QTimer()
         self.__timer.timeout.connect(self.__readImage)
 
@@ -81,21 +84,27 @@ class QCam(QObject):
             return
 
         self.__clear()
+        self.__socket.settimeout(1 / self.__fps)
         self.__timer.start(1000 // self.__fps)
         self.__streaming = True
 
     def __readImage(self) -> None:
         data = b''
         i = 2
-        while i > 1:
-            i, seg = self.__read()
-            data += seg
+        try:
+            while i > 1:
+                i, seg = self.__read()
+                data += seg
 
-        frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), 1)
-        image = QImage(
-            frame.data, frame.shape[1], frame.shape[0], QImage.Format_RGB888).rgbSwapped()
+            frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), 1)
+            image = QImage(
+                frame.data, frame.shape[1], frame.shape[0], QImage.Format_RGB888).rgbSwapped()
 
-        self.imageReady.emit(image)
+            self.imageReady.emit(image)
+
+            self.connected.emit(True)
+        except socket.timeout:
+            self.connected.emit(False)
 
     def __read(self) -> Tuple[int, bytes]:
         seg, _ = self.__socket.recvfrom(self.MAX_DGRAM)

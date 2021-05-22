@@ -36,8 +36,8 @@ class MainWindow(QMainWindow):
         # Status Lights
         statusGrid = self.ui.groupBoxStatus.layout()
 
-        self.statusLightCom = QLedIndicator()
-        self.statusLightCom.setTitle("COM")
+        self.statusLightCamera = QLedIndicator()
+        self.statusLightCamera.setTitle("Camera")
         self.statusLightRpi = QLedIndicator()
         self.statusLightRpi.setTitle("RPi")
         self.statusLightJoystick = QLedIndicator()
@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
         self.statusLightLights = QLedIndicator()
         self.statusLightLights.setTitle("Lights")
 
-        statusGrid.addWidget(self.statusLightCom.container, 0, 0, 1, 1)
+        statusGrid.addWidget(self.statusLightCamera.container, 0, 0, 1, 1)
         statusGrid.addWidget(self.statusLightRpi.container, 0, 1, 1, 1)
         statusGrid.addWidget(self.statusLightJoystick.container, 1, 0, 1, 1)
         statusGrid.addWidget(self.statusLightLights.container, 1, 1, 1, 1)
@@ -109,6 +109,7 @@ class MainWindow(QMainWindow):
         self.ui.gridLayoutHUD.addWidget(self.compass.container, 0, 0, 1, 4)
 
         self.camera = QCamera(port=12345, fps=60)
+        self.camera.connected.connect(self.statusLightCamera.setStatus)
         self.cameraView = QCameraView()
         self.cameraView.setCamera(self.camera)
         self.ui.gridLayoutHUD.addWidget(self.cameraView, 1, 1, 4, 3)
@@ -166,4 +167,4 @@ class MainWindow(QMainWindow):
         self.ui.labCurrentTime.setText(strftime("%H"+":"+"%M"+":"+"%S"))
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.controller.close()
+        pass
