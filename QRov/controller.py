@@ -87,10 +87,6 @@ class QRovController(QObject):
         self.__joystick.axisChanged.connect(self.__on_axisChange)
         self.__joystick.buttonChanged.connect(self.__on_buttonChange)
 
-    def close(self):
-        self.__mqttClient.disconnect()
-        self.__joystick.close()
-
     def __on_mqttSensorMessage(self, str):
         j: dict[str, any] = json.loads(str)
 

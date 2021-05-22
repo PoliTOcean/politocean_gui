@@ -20,7 +20,7 @@ class QMQTTClient(QObject):
     keepAliveChanged = pyqtSignal(int)
     cleanSessionChanged = pyqtSignal(bool)
     protocolVersionChanged = pyqtSignal(int)
-    
+
     def __init__(self, hostname="localhost", port=1883, parent=None) -> None:
         QObject.__init__(self, parent)
 
@@ -32,7 +32,8 @@ class QMQTTClient(QObject):
         self.__status = MQTTStatus.Disconected
         self.__callbacks = {}
 
-        self.__client = mqtt.Client(clean_session=self.__cleanSession, protocol=self.__protocolVersion)
+        self.__client = mqtt.Client(
+            clean_session=self.__cleanSession, protocol=self.__protocolVersion)
         self.__client.on_connect = self.__on_connect
         self.__client.on_message = self.__on_message
         self.__client.on_disconnect = self.__on_disconnect
@@ -43,7 +44,8 @@ class QMQTTClient(QObject):
 
     @status.setter
     def status(self, status: int) -> None:
-        if self.__status == status: return
+        if self.__status == status:
+            return
 
         self.__status = status
         self.statusChanged.emit(status)
@@ -54,7 +56,8 @@ class QMQTTClient(QObject):
 
     @hostname.setter
     def hostname(self, hostname: str) -> None:
-        if self.__hostname == hostname: return
+        if self.__hostname == hostname:
+            return
 
         self.__hostname = hostname
         self.hostnameChanged.emit(hostname)
@@ -65,7 +68,8 @@ class QMQTTClient(QObject):
 
     @port.setter
     def port(self, port: int) -> None:
-        if self.__port == port: return
+        if self.__port == port:
+            return
 
         self.__port = port
         self.portChanged.emit(port)
@@ -76,7 +80,8 @@ class QMQTTClient(QObject):
 
     @keepAlive.setter
     def keepAlive(self, keepAlive: int) -> None:
-        if self.__keepAlive == keepAlive: return
+        if self.__keepAlive == keepAlive:
+            return
 
         self.__keepAlive = keepAlive
         self.keepAliveChanged.emit(keepAlive)
@@ -87,7 +92,8 @@ class QMQTTClient(QObject):
 
     @cleanSession.setter
     def cleanSession(self, cleanSession) -> None:
-        if self.__cleanSession == cleanSession: return
+        if self.__cleanSession == cleanSession:
+            return
         self.__cleanSession = cleanSession
         self.cleanSessionChanged.emit(cleanSession)
 
@@ -97,7 +103,8 @@ class QMQTTClient(QObject):
 
     @protocolVersion.setter
     def protocolVersion(self, protocolVersion: int) -> None:
-        if self.__protocolVersion == protocolVersion: return
+        if self.__protocolVersion == protocolVersion:
+            return
         if protocolVersion in (self.MQTTv31, self.MQTTv311, self.MQTTv5):
             self.__protocolVersion = protocolVersion
             self.protocolVersionChanged.emit(protocolVersion)
@@ -105,10 +112,11 @@ class QMQTTClient(QObject):
     @pyqtSlot()
     def connect(self) -> None:
         if self.__hostname:
-            self.__client.connect(self.__hostname, port=self.__port, keepalive=self.__keepAlive)
+            self.__client.connect(
+                self.__hostname, port=self.__port, keepalive=self.__keepAlive)
             self.status = MQTTStatus.Connecting
             self.__client.loop_start()
-    
+
     @pyqtSlot()
     def disconnect(self) -> None:
         self.__client.loop_stop()
@@ -131,6 +139,7 @@ class QMQTTClient(QObject):
         self.__client.loop_stop()
 
     """Callbacks"""
+
     def __on_connect(self, *args):
         self.status = MQTTStatus.Connected
         self.connected.emit()
@@ -141,8 +150,11 @@ class QMQTTClient(QObject):
 
     def __on_message(self, mqttc, obj, msg):
         mstr = msg.payload.decode('utf-8')
-        
+
         if msg.topic in self.__callbacks:
             self.__callbacks[msg.topic](mstr)
-        
+
         self.messageArrived.emit(mstr)
+
+    def __del__(self):
+        self.disconnect()

@@ -59,3 +59,6 @@ class QJoystick(QObject):
             elif event.type == sdl2.SDL_JOYDEVICEREMOVED:
                 self.__close()
                 self.connected.emit(False)
+
+    def __del__(self):
+        self.__close()
