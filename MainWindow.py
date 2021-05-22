@@ -1,19 +1,20 @@
-from QCompass import QCompass
 from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QVBoxLayout
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLCDNumber, QLabel, QMainWindow, QVBoxLayout
+from PyQt5.QtCore import QTimer, Qt, pyqtSlot
 from Ui_MainWindow import Ui_MainWindow
 
-from QRov import QRov
+from QRov import QRovController
+from QRov.QJoystick import QJoystick, QJoystickAxis, QJoystickButton
 from QActivityMonitor import QActivityMonitor
 from QLedIndicator import QLedIndicator
 from QDepthTape import QDepthTape
+from QCompass import QCompass
 
 import custom_types as t
 
-from mqtt import MQTTWorker
+# from mqtt import MQTTWorker
 from time import strftime
 
 
@@ -28,8 +29,8 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.update_time)
         self.timer.start()
 
-        self.mqttWorker = MQTTWorker()
-        self.mqttWorker.start()
+        # self.mqttWorker = MQTTWorker()
+        # self.mqttWorker.start()
 
         # Status Lights
         statusGrid = self.ui.groupBoxStatus.layout()
@@ -49,18 +50,34 @@ class MainWindow(QMainWindow):
         statusGrid.addWidget(self.statusLightLights.container, 1, 1, 1, 1)
 
         # Sensor Readouts
-        self.rov = QRov()
+        self.controller = QRovController()
+        self.controller.configure("./config")
 
-        if len(self.rov.sensors) > 0:
+        self.controller.joystick.connected.connect(
+            self.statusLightJoystick.setStatus)
+
+        if len(self.controller.sensors) > 0:
             vLayout = QVBoxLayout(self.ui.groupBoxSensorReadouts)
             i = 0
-            for sensor in self.rov.sensors:
-                self.mqttWorker.add_sensor(sensor)
+            for sensor in self.controller.sensors:
+                # self.mqttWorker.add_sensor(sensor)
+                labelName = QLabel()
+                labelName.setText(sensor.name+":")
+                labelName.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+                lcd = QLCDNumber()
+                lcd.display(sensor.value)
+                lcd.setSegmentStyle(QLCDNumber.SegmentStyle.Flat)
+                sensor.updated.connect(lcd.display)
+
+                labelUnits = QLabel()
+                labelUnits.setText(sensor.units)
+                labelUnits.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
                 hLayout = QHBoxLayout(self)
-                hLayout.addWidget(sensor.labelName)
-                hLayout.addWidget(sensor.lcd)
-                hLayout.addWidget(sensor.labelUnits)
+                hLayout.addWidget(labelName)
+                hLayout.addWidget(lcd)
+                hLayout.addWidget(labelUnits)
                 hLayout.setAlignment(hLayout, Qt.AlignHCenter)
 
                 vLayout.addLayout(hLayout)
@@ -71,8 +88,8 @@ class MainWindow(QMainWindow):
 
             self.ui.groupBoxSensorReadouts.setLayout(vLayout)
 
-        if len(self.rov.relays) > 0:
-            for relay in self.rov.relays:
+        if len(self.controller.relays) > 0:
+            for relay in self.controller.relays:
                 self.ui.groupBoxRelayButtons.layout().addWidget(relay.button)
 
         self.activityMonitor = QActivityMonitor(self.ui.teLog)
@@ -82,7 +99,9 @@ class MainWindow(QMainWindow):
         self.ui.graphWidget.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.ui.graphWidget.ci.layout.setSpacing(20)
 
-        self.depthTape = QDepthTape()
+        self.depthTape = QDepthTape(maxDepth=10)
+        self.controller.depth_sensor.updated.connect(
+            self.depthTape.updateDepth)
         self.ui.gridLayoutHUD.addWidget(self.depthTape.container, 1, 0, 4, 1)
 
         self.compass = QCompass()
@@ -90,17 +109,6 @@ class MainWindow(QMainWindow):
 
         width = QApplication.primaryScreen().size().width()
         self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
-
-    #     self.__initJoystick()
-
-    # def __initJoystick(self):
-    #     self.joystickThread = QThread()
-    #     self.joystick = QJoystick()
-    #     self.joystick.moveToThread(self.joystickThread)
-    #     self.joystick.connected.connect(
-    #         self.statusLightJoystick.setStatus)
-    #     self.joystickThread.started.connect(self.joystick.loop_forever)
-    #     self.joystickThread.start()
 
     def on_buttonClearLog_clicked(self):
         self.ui.teLog.clear()
@@ -149,6 +157,4 @@ class MainWindow(QMainWindow):
         self.ui.labCurrentTime.setText(strftime("%H"+":"+"%M"+":"+"%S"))
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.mqttWorker.stop()
-        self.mqttWorker.terminate()
-        self.mqttWorker.wait()
+        self.controller.close()

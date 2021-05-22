@@ -11,7 +11,6 @@ class QDepthTape(QWidget):
 
         self.maxDepth = maxDepth
         self.tickList = []
-        self.lastChange = 0
         self.lastDepth = 0
 
         self.viewer = QQuickView()
@@ -29,6 +28,7 @@ class QDepthTape(QWidget):
         self.currentReadingItem = self.currentReadingComponent.create()
         self.currentReadingItem.setParentItem(self.viewer.rootObject())
 
+        self.__updateCurrentReadingPosition()
         self.currentReadingItem.setZ(5)
 
         for i in range(self.maxDepth + 1):
@@ -39,40 +39,42 @@ class QDepthTape(QWidget):
             tickItem.setParentItem(self.viewer.rootObject())
 
             tickItem.text = str(i)
+            tickItem.setX(15 - tickItem.property("textX"))
+            tickItem.setY(i * 40 + self.viewer.height() /
+                          2 - tickItem.height()/2)
 
             self.tickList.append(tickItem)
 
-        self.resetGraphics()
-
-        self.viewer.widthChanged.connect(self.resetGraphics)
-        self.viewer.heightChanged.connect(self.resetGraphics)
+        self.viewer.heightChanged.connect(self.onResize)
 
         self.container.show()
 
     def show(self) -> None:
         return self.container.show()
 
-    def resetGraphics(self):
+    def onResize(self):
+        self.__updateCurrentReadingPosition()
+        self.__updateTicksPosition(self.lastDepth)
+
+    @pyqtSlot(float)
+    def updateDepth(self, depth: float):
+        self.currentReadingItem.text = str(depth)
+        self.__updateTicksPosition(depth)
+
+        self.lastDepth = depth
+
+    def __updateTicksPosition(self, depth: float):
+        for i, tickItem in enumerate(self.tickList, start=0):
+            tickItem.setX(15 - tickItem.property("textX"))
+            tickItem.setY((i - depth) * 40 + self.viewer.height() /
+                          2 - tickItem.height()/2)
+
+    def __updateCurrentReadingPosition(self):
         self.currentReadingItem.setX(self.viewer.width() -
                                      self.currentReadingItem.width() + 2)
         self.currentReadingItem.setY(
             self.viewer.height()/2 - self.currentReadingItem.height()/2)
 
-        for i, tickItem in enumerate(self.tickList, start=0):
-            tickItem.setX(15 - tickItem.property("textX"))
-            tickItem.setY(i*40 + self.viewer.height() /
-                          2 - tickItem.height()/2)
-
-        self.updateDepth(self.lastDepth)
-
-    @pyqtSlot(float)
-    def updateDepth(self, depth: float):
-        self.currentReadingItem.text = str(depth)
-        change = depth * -40.0
-        for tickItem in self.tickList:
-            tickItem.setY(tickItem.y() + change)
-
-        self.lastDepth = depth
 
 
 class QDepthTick(QQuickItem):
