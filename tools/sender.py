@@ -1,53 +1,53 @@
+import struct
 import cv2
-import socket
 import math
-import pickle
-import sys
+import socket
 
-max_length = 65000
-host = sys.argv[1] # set ip of the receiver
-port = 5000
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+class FrameSegment(object):
+    """Object to break down image frame segment
+    if the size of image exceed maximum datagram size
+    """
 
-cap = cv2.VideoCapture(0)
-ret, frame = cap.read()
+    MAX_DGRAM = 2**16
+    MAX_IMAGE_DGRAM = MAX_DGRAM - 64  # minus 64 bytes in case UDP frame overflown
 
-while ret:
-    # compress frame
-    retval, buffer = cv2.imencode(".jpg", frame)
+    def __init__(self, sock, port, addr="127.0.0.1"):
+        self.s = sock
+        self.port = port
+        self.addr = addr
 
-    if retval:
-        # convert to byte array
-        buffer = buffer.tobytes()
-        # get size of the frame
-        buffer_size = len(buffer)
+    def udp_frame(self, img):
+        """Compress image and Break down
+        into data segments
+        """
 
-        num_of_packs = 1
-        if buffer_size > max_length:
-            num_of_packs = math.ceil(buffer_size/max_length)
+        compress_img = cv2.imencode(".jpg", img)[1]
+        dat = compress_img.tobytes()
+        size = len(dat)
+        num_of_segments = math.ceil(size/(self.MAX_IMAGE_DGRAM))
+        array_pos_start = 0
 
-        frame_info = {"packs":num_of_packs}
+        while num_of_segments:
+            array_pos_end = min(size, array_pos_start + self.MAX_IMAGE_DGRAM)
+            self.s.sendto(struct.pack("B", num_of_segments) +
+                          dat[array_pos_start:array_pos_end], (self.addr, self.port))
+            array_pos_start = array_pos_end
+            num_of_segments -= 1
 
-        # send the number of packs to be expected
-        print("Number of packs:", num_of_packs)
-        sock.sendto(pickle.dumps(frame_info), (host, port))
-        
-        left = 0
-        right = max_length
 
-        for i in range(num_of_packs):
-            print("left:", left)
-            print("right:", right)
+if __name__ == '__main__':
+    """Top level main function"""
+    # Set UDP socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    port = 12345
+    fs = FrameSegment(s, port)
 
-            # truncate data to send
-            data = buffer[left:right]
-            left = right
-            right += max_length
+    cap = cv2.VideoCapture(1)
+    while (cap.isOpened()):
+        _, frame = cap.read()
+        fs.udp_frame(frame)
 
-            # send the frames accordingly
-            sock.sendto(data, (host, port))
-    
-    ret, frame = cap.read()
-
-print("done")
+    cap.release()
+    cv2.destroyAllWindows()
+    s.close()

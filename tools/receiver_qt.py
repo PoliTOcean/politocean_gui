@@ -1,6 +1,6 @@
 import sys
 from typing import Any, Tuple
-from PyQt5.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 from PyQt5.QtCore import Qt, QObject, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication
@@ -11,7 +11,7 @@ import numpy as np
 import socket
 
 
-class QCamera(QObject):
+class QCam(QObject):
     MAX_DGRAM = 2 ** 16
     MAX_IMAGE_DGRAM = MAX_DGRAM - 64
 
@@ -48,9 +48,7 @@ class QCamera(QObject):
     @address.setter
     def address(self, addr: str) -> None:
         self.__address = addr
-
-        if self.__port is not None:
-            self.__socket.bind((self.__address, self.__port))
+        self.__socket.bind((self.__address, self.__port))
 
     @property
     def fps(self) -> int:
@@ -114,41 +112,33 @@ class QCamera(QObject):
                 return
 
 
-class QCameraView(QLabel):
+class DisplayImageWidget(QWidget):
     def __init__(self, parent=None):
-        QLabel.__init__(self, parent)
+        super(DisplayImageWidget, self).__init__(parent)
 
-        self.setAlignment(Qt.AlignCenter)
+        self.button = QPushButton('Show picture')
+        self.image_frame = QLabel()
+        self.image_frame.setAlignment(Qt.AlignCenter)
 
-        self.__camera: QCamera = None
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.button)
+        self.layout.addWidget(self.image_frame)
+        self.setLayout(self.layout)
 
-    def stop(self):
-        if self.__camera is None:
-            return
-
-        self.__camera.stop()
-
-    def play(self):
-        if self.__camera is None:
-            return
-
-        self.__camera.stream()
-
-    def setCamera(self, camera: QCamera) -> None:
-        if self.__camera is not None and self.__camera.is_streaming:
-            self.__camera.stop()
-
-        self.__camera = camera
-        self.__camera.imageReady.connect(self.setImage)
-
-    @property
-    def is_streaming(self) -> bool:
-        if self.__camera is None:
-            return False
-
-        return self.__camera.is_streaming
+        self.cam = QCam(port=12345, fps=60)
+        self.cam.imageReady.connect(self.setImage)
+        self.cam.stream()
 
     @pyqtSlot(QImage)
     def setImage(self, img):
-        self.setPixmap(QPixmap.fromImage(img).scaled(
-            self.width(), self.height(), Qt.KeepAspectRatio))
+        self.image_frame.setPixmap(QPixmap.fromImage(img).scaled(
+            self.image_frame.width(), self.image_frame.height(), Qt.KeepAspectRatio))
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+
+    display_image_widget = DisplayImageWidget()
+    display_image_widget.show()
+
+    sys.exit(app.exec_())

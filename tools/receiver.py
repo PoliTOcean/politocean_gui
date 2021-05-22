@@ -1,47 +1,43 @@
-import cv2
+import struct
 import socket
-import pickle
 import numpy as np
+import cv2
 
-host = "0.0.0.0"
-port = 5000
-max_length = 65540
+MAX_DGRAM = 2**16
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind((host, port))
 
-frame_info = None
-buffer = None
-frame = None
+def dump_buffer(s):
+    """Emptying buffer frame"""
+    while True:
+        seg, addr = s.recvfrom(MAX_DGRAM)
 
-print("-> waiting for connection")
+        print(seg[0])
+        if struct.unpack("B", seg[0:1])[0] == 1:
+            print("finish emptying buffer")
+            break
 
-while True:
-    data, address = sock.recvfrom(max_length)
-    
-    if len(data) < 100:
-        frame_info = pickle.loads(data)
 
-        if frame_info:
-            nums_of_packs = frame_info["packs"]
+if __name__ == '__main__':
+    """Getting image udp frame and
+    concate before decode and output image
+    """
 
-            for i in range(nums_of_packs):
-                data, address = sock.recvfrom(max_length)
-
-                if i == 0:
-                    buffer = data
-                else:
-                    buffer += data
-
-            frame = np.frombuffer(buffer, dtype=np.uint8)
-            frame = frame.reshape(frame.shape[0], 1)
-
-            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-            frame = cv2.flip(frame, 1)
-            
-            if frame is not None and type(frame) == np.ndarray:
-                cv2.imshow("Stream", frame)
-                if cv2.waitKey(1) == 27:
-                    break
-                
-print("goodbye")
+    # Set up socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind(('127.0.0.1', 12345))
+    dat = b''
+    dump_buffer(s)
+    while True:
+        seg, addr = s.recvfrom(MAX_DGRAM)
+        if struct.unpack("B", seg[0:1])[0] > 1:
+            dat += seg[1:]
+        else:
+            dat += seg[1:]
+            img = cv2.imdecode(np.frombuffer(dat, dtype=np.uint8), 1)
+            cv2.imshow("frame", img)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+            dat = b''
+    # cap.release()
+    cv2.destroyAllWindows()
+    s.close()

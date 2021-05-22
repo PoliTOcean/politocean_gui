@@ -1,3 +1,4 @@
+from QCamera import QCamera, QCameraView
 from PyQt5.QtGui import QCloseEvent
 import numpy as np
 
@@ -106,6 +107,14 @@ class MainWindow(QMainWindow):
 
         self.compass = QCompass()
         self.ui.gridLayoutHUD.addWidget(self.compass.container, 0, 0, 1, 4)
+
+        self.camera = QCamera(port=12345, fps=60)
+        self.cameraView = QCameraView()
+        self.cameraView.setCamera(self.camera)
+        self.ui.gridLayoutHUD.addWidget(self.cameraView, 1, 1, 4, 3)
+
+        self.cameraView.show()
+        self.cameraView.play()
 
         width = QApplication.primaryScreen().size().width()
         self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
