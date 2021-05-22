@@ -1,2 +1,4 @@
 sensors: !include sensors.yaml
 relays: !include relays.yaml
+joystick: !include joystick.yaml
+mqtt: !include mqtt.yaml

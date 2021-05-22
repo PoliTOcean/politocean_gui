@@ -53,6 +53,9 @@ class MainWindow(QMainWindow):
         self.controller = QRovController()
         self.controller.configure("./config")
 
+        self.controller.joystick.connected.connect(
+            self.statusLightJoystick.setStatus)
+
         if len(self.controller.sensors) > 0:
             vLayout = QVBoxLayout(self.ui.groupBoxSensorReadouts)
             i = 0
@@ -97,7 +100,8 @@ class MainWindow(QMainWindow):
         self.ui.graphWidget.ci.layout.setSpacing(20)
 
         self.depthTape = QDepthTape(maxDepth=10)
-        self.controller.depth_sensor.updated.connect(self.depthTape.updateDepth)
+        self.controller.depth_sensor.updated.connect(
+            self.depthTape.updateDepth)
         self.ui.gridLayoutHUD.addWidget(self.depthTape.container, 1, 0, 4, 1)
 
         self.compass = QCompass()
@@ -105,9 +109,6 @@ class MainWindow(QMainWindow):
 
         width = QApplication.primaryScreen().size().width()
         self.ui.splitterHorizontal.setSizes([width/8, width*5/8, width*2/8])
-
-        self.joystick = QJoystick()
-        self.joystick.signals.connected.connect(self.statusLightJoystick.setStatus)
 
     def on_buttonClearLog_clicked(self):
         self.ui.teLog.clear()
@@ -155,7 +156,5 @@ class MainWindow(QMainWindow):
     def update_time(self):
         self.ui.labCurrentTime.setText(strftime("%H"+":"+"%M"+":"+"%S"))
 
-    # def closeEvent(self, a0: QCloseEvent) -> None:
-        # self.mqttWorker.stop()
-        # self.mqttWorker.terminate()
-        # self.mqttWorker.wait()
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.controller.close()
